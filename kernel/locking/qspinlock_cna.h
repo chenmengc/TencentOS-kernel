@@ -6,6 +6,7 @@
 #include <linux/topology.h>
 #include <linux/sched/clock.h>
 #include <linux/moduleparam.h>
+#include <linux/sched/rt.h>
 #include <linux/random.h>
 
 /*
@@ -377,7 +378,7 @@ static inline void cna_lock_handoff(struct mcs_spinlock *node,
  * Constant (boot-param configurable) flag selecting the NUMA-aware variant
  * of spinlock.  Possible values: -1 (off) / 0 (auto, default) / 1 (on).
  */
-static int numa_spinlock_flag;
+static int numa_spinlock_flag = 1;
 
 static int __init numa_spinlock_setup(char *str)
 {
@@ -418,6 +419,6 @@ void __init cna_configure_spin_lock_slowpath(void)
 
 	pv_ops.lock.queued_spin_lock_slowpath = __cna_queued_spin_lock_slowpath;
 
-	pr_info("Enabling CNA spinlock\n");
+	printk("Enabling CNA spinlock\n");
 }
 
