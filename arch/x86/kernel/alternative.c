@@ -740,6 +740,10 @@ void __init alternative_instructions(void)
 
 	apply_paravirt(__parainstructions, __parainstructions_end);
 
+#if defined(CONFIG_NUMA_AWARE_SPINLOCKS)
+	cna_configure_spin_lock_slowpath();
+#endif
+
 	restart_nmi();
 	alternatives_patched = 1;
 }
