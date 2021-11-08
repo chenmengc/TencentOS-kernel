@@ -102,7 +102,7 @@ static bool probably(unsigned int num_bits)
 static void __init cna_init_nodes_per_cpu(unsigned int cpu)
 {
 	struct mcs_spinlock *base = per_cpu_ptr(&qnodes[0].mcs, cpu);
-	int numa_node = cpu_to_node(cpu);
+	int numa_node =cpu/8;// cpu_to_node(cpu);
 	int i;
 
 	for (i = 0; i < MAX_NODES; i++) {
