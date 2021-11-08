@@ -111,6 +111,7 @@ void __init native_pv_lock_init(void)
 {
 	if (!boot_cpu_has(X86_FEATURE_HYPERVISOR))
 		static_branch_disable(&virt_spin_lock_key);
+	static_branch_disable(&virt_spin_lock_key);
 }
 
 unsigned paravirt_patch_default(u8 type, void *insn_buff,
