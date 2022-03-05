@@ -132,6 +132,9 @@ void cgroup_free(struct task_struct *p);
 int cgroup_init_early(void);
 int cgroup_init(void);
 
+u64 sli_monitor_signal(struct cgroup *cgrp, struct sli_notify_event *notify_event);
+int sli_event_add(struct sli_notify_event *sctx, u32 event_type, u32 levent, u32 count);
+
 int cgroup_parse_float(const char *input, unsigned dec_shift, s64 *v);
 
 /*

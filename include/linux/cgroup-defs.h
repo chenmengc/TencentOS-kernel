@@ -349,6 +349,18 @@ struct cgroup_freezer_state {
 	int nr_frozen_tasks;
 };
 
+struct sli_notify_event {
+	u64 notify_vector[SLI_EVENT_NR];
+};
+
+/* Used to record real notify info, allocate when cgroup_mkdir */
+struct sli_notify_ctx {
+	int count;
+	spinlock_t notify_lock;
+	struct sli_notify_event notify_event;
+	wait_queue_head_t wqh;
+};
+
 struct cgroup {
 	/* self css with NULL ->ss, points back to this cgroup */
 	struct cgroup_subsys_state self;
@@ -497,6 +509,8 @@ struct cgroup {
 	/* sched latency stat */
 	struct sli_schedlat_stat __percpu *sli_schedlat_stat_percpu;
 
+	/* sli notify info */
+	struct sli_notify_ctx *sctx;
 	spinlock_t cgrp_mbuf_lock;
 
 	/* ids of the ancestors at each level including self */
