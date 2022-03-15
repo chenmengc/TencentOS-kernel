@@ -7,6 +7,7 @@
  */
 #include "sched.h"
 #include <linux/sli.h>
+#include <linux/poll.h>
 
 /* Time spent by the tasks of the CPU accounting group executing in ... */
 enum cpuacct_stat_index {
@@ -404,6 +405,16 @@ static struct cftype files[] = {
 		.name = "sli_max",
 		.flags = CFTYPE_NOT_ON_ROOT,
 		.seq_show = cpuacct_sli_max_show,
+	},
+	{
+		.name = "sli_monitor",
+		.flags = CFTYPE_NOT_ON_ROOT,
+		.open = sli_monitor_open,
+		.seq_show = sli_monitor_show,
+		.seq_start = sli_monitor_start,
+		.seq_next = sli_monitor_next,
+		.seq_stop = sli_monitor_stop,
+		.poll = sli_monitor_poll,
 	},
 	{ }	/* terminate */
 };

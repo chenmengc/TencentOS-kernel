@@ -5067,7 +5067,7 @@ static int sli_monitor_exchange(struct sli_notify_event *tnotify_event,
 	return 0;
 }
 
-static int sli_monitor_open(struct kernfs_open_file *of)
+int sli_monitor_open(struct kernfs_open_file *of)
 {
 	struct file *filp = of->file;
 	int ret = 0;
@@ -5081,7 +5081,7 @@ static int sli_monitor_open(struct kernfs_open_file *of)
 	return ret;
 }
 
-static int sli_monitor_show(struct seq_file *seq, void *v)
+int sli_monitor_show(struct seq_file *seq, void *v)
 {
 	struct cgroup *cgrp = seq_css(seq)->cgroup;
 	struct sli_notify_event notify_event;
@@ -5132,8 +5132,7 @@ static inline bool is_notify_active(struct sli_notify_event *ne)
 	return false;
 }
 
-static __poll_t sli_monitor_poll(struct kernfs_open_file *of,
-				 poll_table *pt)
+__poll_t sli_monitor_poll(struct kernfs_open_file *of, poll_table *pt)
 {
 	struct cgroup *cgrp = of->kn->parent->priv;
 	struct file *filp = of->file;

@@ -24,7 +24,7 @@
 #include <linux/user_namespace.h>
 #include <linux/refcount.h>
 #include <linux/kernel_stat.h>
-
+#include <linux/poll.h>
 #include <linux/cgroup-defs.h>
 
 #ifdef CONFIG_CGROUPS
@@ -969,5 +969,12 @@ void *cgroup_mbuf_start(struct seq_file *s, loff_t *pos);
 void *cgroup_mbuf_next(struct seq_file *s, void *v, loff_t *pos);
 void cgroup_mbuf_stop(struct seq_file *s, void *v);
 int cgroup_mbuf_show(struct seq_file *s, void *v);
+
+int sli_monitor_open(struct kernfs_open_file *of);
+int sli_monitor_show(struct seq_file *seq, void *v);
+void *sli_monitor_start(struct seq_file *s, loff_t *pos);
+void *sli_monitor_next(struct seq_file *s, void *v, loff_t *pos);
+void sli_monitor_stop(struct seq_file *seq, void *v);
+__poll_t sli_monitor_poll(struct kernfs_open_file *of, poll_table *pt);
 
 #endif /* _LINUX_CGROUP_H */
