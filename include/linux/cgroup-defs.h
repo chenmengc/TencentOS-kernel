@@ -350,7 +350,7 @@ struct cgroup_freezer_state {
 };
 
 struct sli_notify_event {
-	u64 notify_vector[SLI_EVENT_NR];
+	u32 notify_vector[SLI_EVENT_NR][SLI_ITEM_MAX];
 };
 
 /* Used to record real notify info, allocate when cgroup_mkdir */

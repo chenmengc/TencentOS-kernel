@@ -5037,9 +5037,9 @@ static struct sli_notify_ctx* sctx_alloc(void)
 
 	sctx = kzalloc(sizeof(struct sli_notify_ctx), GFP_KERNEL);
 	if (sctx) {
+		/* Do init work */
 		init_waitqueue_head(&sctx->wqh);
 		spin_lock_init(&sctx->notify_lock);
-		memset(&sctx->notify_event.notify_vector, 0, sizeof(u64) * SLI_EVENT_NR);
 	}
 
 	return sctx;
@@ -5056,13 +5056,9 @@ static void sctx_free(struct cgroup *cgrp)
 static int sli_monitor_exchange(struct sli_notify_event *tnotify_event,
 				struct sli_notify_event *snotify_event)
 {
-	int index;
-
-	for (index = 0; index < SLI_EVENT_NR; index++) {
-		tnotify_event->notify_vector[index] =
-			snotify_event->notify_vector[index];
-		snotify_event->notify_vector[index] = 0;
-	}
+	memcpy(tnotify_event->notify_vector, snotify_event->notify_vector,
+	       sizeof(struct sli_notify_event));
+	memset(snotify_event->notify_vector, 0, sizeof(struct sli_notify_event));
 
 	return 0;
 }
@@ -5081,6 +5077,24 @@ int sli_monitor_open(struct kernfs_open_file *of)
 	return ret;
 }
 
+static inline void notify_event_print(struct seq_file *seq,
+				      struct sli_notify_event *notify_event,
+				      u32 event_type, u32 levent_max)
+{
+	int index;
+	u32 count;
+
+	for (index = 0; index < levent_max; index++) {
+		count = notify_event->notify_vector[event_type][index];
+		/*
+		 * Only print when event count > 0, print format:
+		 * event_type event_item event count
+		 */
+		if (count > 0)
+			seq_printf(seq, "%u %u %u\n", event_type, index, count);
+	}
+}
+
 int sli_monitor_show(struct seq_file *seq, void *v)
 {
 	struct cgroup *cgrp = seq_css(seq)->cgroup;
@@ -5095,7 +5109,7 @@ int sli_monitor_show(struct seq_file *seq, void *v)
 		spin_unlock_irqrestore(&cgrp->sctx->notify_lock, flags);
 
 		for (i = 0; i < SLI_EVENT_NR; i++) {
-			seq_printf(seq, "%llu\n", notify_event.notify_vector[i]);
+			notify_event_print(seq, &notify_event, i, SLI_ITEM_MAX);
 		}
 	}
 
@@ -5122,11 +5136,14 @@ void sli_monitor_stop(struct seq_file *seq, void *v)
 
 static inline bool is_notify_active(struct sli_notify_event *ne)
 {
-	int index;
+	int index_e;
+	int index_i;
 
-	for (index = 0; index < SLI_EVENT_NR; index ++) {
-		if (ne->notify_vector[index] > 0)
-			return true;
+	/* Any sli event count  > 0 will be active */
+	for (index_e = 0; index_e < SLI_EVENT_NR; index_e++) {
+		for (index_i = 0; index_i < SLI_ITEM_MAX; index_i++)
+			if (ne->notify_vector[index_e][index_i] > 0)
+				return true;
 	}
 
 	return false;
@@ -5139,6 +5156,7 @@ __poll_t sli_monitor_poll(struct kernfs_open_file *of, poll_table *pt)
 	struct sli_notify_ctx *sctx;
 	__poll_t events = 0;
 	bool active;
+	unsigned long flags;
 
 	sctx = cgrp->sctx;
 	if (!sctx) {
@@ -5148,7 +5166,11 @@ __poll_t sli_monitor_poll(struct kernfs_open_file *of, poll_table *pt)
 
 	poll_wait(filp, &sctx->wqh, pt);
 
+	/* Must hold notify_event lock */
+	spin_lock_irqsave(&cgrp->sctx->notify_lock, flags);
 	active = is_notify_active(&sctx->notify_event);
+	spin_unlock_irqrestore(&cgrp->sctx->notify_lock, flags);
+
 	if (active)
 		events |= EPOLLIN;
 
@@ -5156,26 +5178,48 @@ __poll_t sli_monitor_poll(struct kernfs_open_file *of, poll_table *pt)
 
 }
 
-#define LEVENT_SHIFT	32
-#define VALUE_MASK	0xffffffff
+struct sli_notify_event *sli_event_alloc()
+{
+	struct sli_notify_event *notify_event;
 
-int sli_event_add(struct sli_notify_event *sctx,
-		  u32 event_type,  u32 levent, u32 count)
+	notify_event = kzalloc(sizeof(struct sli_notify_event), GFP_KERNEL);
+	if (notify_event)
+		return notify_event;
+
+	return NULL;
+}
+EXPORT_SYMBOL(sli_event_alloc);
+
+void sli_event_free(struct sli_notify_event *notify_event)
+{
+	if (notify_event)
+		kfree(notify_event);
+}
+EXPORT_SYMBOL(sli_event_free);
+
+int sli_event_add(struct sli_notify_event *notify_event,
+		  u32 event_type, u32 levent, u32 count)
 {
 	int res = 0;
 
-	if (event_type >= SLI_EVENT_NR) {
-		pr_err("sli: invalid sli event type [ %u ]\n", event_type);
+	if (!notify_event) {
+		pr_err("sli: target notify_event is NULL\n");
+		res = -1;
+		return res;
+	}
+
+	if (event_type >= SLI_EVENT_NR || levent > SLI_ITEM_MAX) {
+		pr_err("sli: invalid sli event type [ %u ] or sli item [ %u ]\n",
+		       event_type, levent);
 		res = -1;
 	}
-	sctx->notify_vector[event_type] = ((u64)levent << LEVENT_SHIFT)
-		| (count & VALUE_MASK);
+	notify_event->notify_vector[event_type][levent] = count;
 
 	return res;
 }
 EXPORT_SYMBOL(sli_event_add);
 
-u64 sli_monitor_signal(struct cgroup *cgrp, struct sli_notify_event *notify_event)
+u32 sli_monitor_signal(struct cgroup *cgrp, struct sli_notify_event *notify_event)
 {
 	unsigned long flags;
 	struct sli_notify_ctx *sctx;
