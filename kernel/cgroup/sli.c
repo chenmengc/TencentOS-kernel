@@ -1079,9 +1079,8 @@ int sli_monitor_open(struct kernfs_open_file *of)
 
 	filp->f_mode &= FMODE_READ;
 
-	if (!filp->f_mode & FMODE_READ) {
+	if (!filp->f_mode & FMODE_READ)
 		ret = -EINVAL;
-	}
 
 	return ret;
 }
@@ -1117,9 +1116,8 @@ int sli_monitor_show(struct seq_file *seq, void *v)
 		sli_monitor_exchange(&notify_event, &cgrp->sctx->notify_event);
 		spin_unlock_irqrestore(&cgrp->sctx->notify_lock, flags);
 
-		for (i = 0; i < SLI_EVENT_NR; i++) {
+		for (i = 0; i < SLI_EVENT_NR; i++)
 			notify_event_print(seq, &notify_event, i, SLI_ITEM_MAX);
-		}
 	}
 
 	return 0;
@@ -1225,12 +1223,12 @@ u32 sli_monitor_signal(struct cgroup *cgrp, struct sli_notify_event *notify_even
 	sctx = cgrp->sctx;
 
 	spin_lock_irqsave(&sctx->notify_lock, flags);
-
 	sli_monitor_exchange(&cgrp->sctx->notify_event, notify_event);
-	if (waitqueue_active(&sctx->wqh))
-		wake_up_locked_poll(&sctx->wqh, EPOLLIN);
-
 	spin_unlock_irqrestore(&sctx->notify_lock, flags);
+
+	if (waitqueue_active(&sctx->wqh))
+		wake_up_poll(&sctx->wqh, EPOLLIN);
+
 
 	return 0;
 }
